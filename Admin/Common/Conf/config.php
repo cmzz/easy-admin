@@ -17,7 +17,7 @@ $appConfig =  array(
     'DEFAULT_CONTROLLER' => 'Public',
 
     // 分页列表数
-    'PAGE_LIST_ROWS' => 10,
+    'PAGE_LIST_ROWS' => 20,
 
     // 开启布局
     'LAYOUT_ON' => true,
