@@ -35,6 +35,22 @@ function timestamp() {
     return time();
 }
 
+/**
+ * 返回当前登录账号的id
+ * @return mixed
+ */
+function current_id() {
+    return $_SESSION['current_account']['id'];
+}
+
+/**
+ * 当前的登录账号的email
+ * @return mixed
+ */
+function current_email() {
+    return $_SESSION['current_account']['email'];
+}
+
 // 得到已经注册的已定义函数
 $customFill = get_registry_fill();
 if (!isset($customFill) || !is_array($customFill)) {
@@ -44,7 +60,9 @@ if (!isset($customFill) || !is_array($customFill)) {
 $fill = array(
     'uuid',
     'datetime',
-    'timestamp'
+    'timestamp',
+    'current_id',
+    'current_email'
 );
 
 foreach ($fill as $item) {
