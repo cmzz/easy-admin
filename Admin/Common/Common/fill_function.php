@@ -27,6 +27,14 @@ function datetime() {
     return date('Y-m-d H:i:s');
 }
 
+/**
+ * unix 时间
+ * @return int
+ */
+function timestamp() {
+    return time();
+}
+
 // 得到已经注册的已定义函数
 $customFill = get_registry_fill();
 if (!isset($customFill) || !is_array($customFill)) {
@@ -35,7 +43,8 @@ if (!isset($customFill) || !is_array($customFill)) {
 
 $fill = array(
     'uuid',
-    'datetime'
+    'datetime',
+    'timestamp'
 );
 
 foreach ($fill as $item) {
