@@ -24,7 +24,7 @@ function activedLink($controller_name, $action_name, $style) {
         return $style;
     }
 
-    if (!isset($action_name) && (false !== strpos($controller_name, getCtrName()))) {
+    if (!isset($action_name) && $controller_name == getCtrName()) {
         return $style;
     }
 
