@@ -119,14 +119,18 @@ class EmptyController extends CommonController {
             if (0 != $field['relation_model']
                 && !empty($field['relation_value'])
                 && !empty($field['relation_field'])) {
+
                 // 被关联的模型
                 $rModel = M('Model')->getById($field['relation_model']);
+
                 // 表模型名
                 $mn = D('Model', 'Service')->getCtrlName($rModel['tbl_name']);
+                $model_mn = $this->getModel($mn);
 
                 foreach ($rows as $key => $row) {
                     $tmp = "{$field['relation_field']}={$row[$fn]}";
-                    $rField = M($mn)->where($tmp)
+
+                    $rField = $model_mn->where($tmp)
                                     ->field("{$field['relation_value']}")
                                     ->find();
                     $rows[$key][$fn] = $rField[$field['relation_value']];
@@ -281,12 +285,15 @@ class EmptyController extends CommonController {
         }
     }
 
-    protected function getModel() {
-        $ctrName = $this->getCtrName();
-        if(strpos($ctrName, '.') !== false) {
-            return M($ctrName, null);
+    protected function getModel($tblName="") {
+        if (!$tblName) {
+            $tblName = $this->getCtrName();
+        }
+
+        if(strpos($tblName, '.') !== false) {
+            return M($tblName, null);
         } else {
-            return M($ctrName);
+            return M($tblName);
         }
     }
 

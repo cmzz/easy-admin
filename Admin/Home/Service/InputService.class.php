@@ -153,15 +153,37 @@ class InputService extends CommonService {
         $inputs = array();
         $orders = array();
         foreach ($fields as $key => $field) {
+
             $input = M('Input')->getByFieldId($field['id']);
             if ($input['is_show']) {
+                $types = array('checkbox', 'select', 'radio', 'relation_select');
+
+                // 处理opt_value中的默认项
+                $i = 0;
+                $inputLogic = D('Input', 'Logic');
+
+                $opts = $inputLogic->optValueToArray($input['opt_value']);
+
+                //刷新最新关联数据
+                if($input['type']=='relation_select'){
+                    $opts = $inputLogic->getRelationOpts($field);
+
+                    // 已得到realtion_select的可选项
+                    if ('relation_select' == $input['type']) {
+                        $inputs[$key]['type'] = 'select';
+                    }
+                    $inputs[$key]['opt_value'] = $opts;
+                }
+
                 $inputs[$key] = $input;
                 $orders[$key] = $inputs[$key]['show_order'];
+
+                $field['model'] = $model['tbl_name'];
+                D('Input', 'Logic')->genHtml($inputs[$key], $field);
             }
         }
         // 排序表单域
         array_multisort($orders, $inputs);
-
         return $inputs;
     }
 

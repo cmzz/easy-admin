@@ -134,6 +134,14 @@ class InputLogic extends CommonLogic {
         $input['html'] = $html;
     }
 
+    public function getModel($tblName="") {
+        if(strpos($tblName, '.') !== false) {
+            return M($tblName, null);
+        } else {
+            return M($tblName);
+        }
+    }
+
     /**
      * 得到关联可选项数组
      * @param  array $field
@@ -156,10 +164,14 @@ class InputLogic extends CommonLogic {
             return '';
         }
 
-        // 得到不带前缀的表名
-        $tblName = substr($rm['tbl_name'], strlen(C('DB_PREFIX')));
-        // 得到对应模型表中的关联字段
-        $opts = M($tblName)->field("{$rv},{$rf}")->select();
+        $tblName = $rm['tbl_name'];
+        if(strpos($rm['tbl_name'], '.') === false) {
+            // 得到不带前缀的表名
+            $tblName = substr($tblName, strlen(C('DB_PREFIX')));
+        }
+
+        $m = $this->getModel($tblName);
+        $opts = $m->field("{$rv},{$rf}")->select();
 
         $list = array();
         foreach ($opts as $key => $part) {
