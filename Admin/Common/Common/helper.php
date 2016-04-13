@@ -17,6 +17,13 @@ function getCtrName() {
     return $ctrName;
 }
 
+/**
+ * 标签高亮
+ * @param $controller_name
+ * @param $action_name
+ * @param $style
+ * @return string
+ */
 function activedLink($controller_name, $action_name, $style) {
     if (isset($action_name)
         && (false !== strpos($controller_name, getCtrName()))
