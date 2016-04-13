@@ -20,9 +20,9 @@ function uuid($prefix = '') {
 }
 
 /**
-* 生成datetime
-* @return string
-*/
+ * 生成datetime
+ * @return bool|string
+ */
 function datetime() {
     return date('Y-m-d H:i:s');
 }
