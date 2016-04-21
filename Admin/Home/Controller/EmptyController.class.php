@@ -451,7 +451,7 @@ class EmptyController extends CommonController {
 
     public function gen_where($model_id) {
         if(!$_GET['search'])
-            return ;
+            return [];
 
         $map = [];
         for($i=0; $i < count($_GET['search']); $i++) {
