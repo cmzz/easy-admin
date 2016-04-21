@@ -52,7 +52,13 @@ class EmptyController extends CommonController {
 
         // 排序
         $u_order = '';
+        $search_opt = [];
         foreach($fields as $val) {
+            # 搜索字段
+            if($val['is_list_show'] || $val['is_search']) {
+                $search_opt[] = [$val['name'], $val['comment']];
+            }
+
             if($val['order_by'] == 1) {
                 $u_order .=' '.$val['name'].' '.$val['sort'].',';
             }
@@ -62,8 +68,17 @@ class EmptyController extends CommonController {
             $order_by_str = $u_order;
         }
 
+        if(!$model['search_num'])
+            $model['search_num'] = 2;
+
+        if($search_opt && $model['search_num'] > 0) {
+            $search_html = $this->gen_search($search_opt, $model['search_num']);
+        }
+
+        $where = $this->gen_where($model['id']);
+
         // 得到分页数据
-        $result = $this->getPagination('Default', [], null, $order_by_str);
+        $result = $this->getPagination('Default', $where, null, $order_by_str);
 
         $rows = array_map("strip_sql_injection", $result['data']);
         unset($result['data']);
@@ -138,6 +153,7 @@ class EmptyController extends CommonController {
             }
         }
 
+        $this->assign('search_html', $search_html);
         $this->assign('pk', $pk);
         $this->assign('model', $model);
         $this->assign('fields', $fields);
@@ -373,6 +389,255 @@ class EmptyController extends CommonController {
             } else {
                 $this->errorReturn("操作失败!");
             }
+        }
+    }
+
+    public function gen_search($search_opt, $num) {
+        $condition_arr = [
+            ['%', '包含'],
+            ['=', '等于'],
+            ['!=', '不等于'],
+            ['!%', '不包含'],
+            ['^%', '以开头'],
+            ['$%', '以结尾'],
+            ['\>=', '大于等于'],
+            ['\>', '大于'],
+            ['\<=', '小于等于'],
+            ['\<', '小于'],
+            ['in', 'IN'],
+            ['notin', 'NOT IN'],
+            ['between', 'BETWEEN '],
+            ['notbetween', 'NOT BETWEEN '],
+        ];
+
+        $join_arr = [
+            ['and', "并且"],
+//            ['or', "或"],
+        ];
+
+        $search_html = '';
+        for($i = 1; $i<= $num; $i++) {
+            $search_opt_html = "";
+
+            foreach($search_opt as $v) {
+                $active = ($v[0] == $_GET['search'][$i-1]) ? "selected" : "";
+                $search_opt_html .= '<option value="'.$v[0].'" '.$active.'>'.$v[1].'</option>';
+            }
+            $search_field_html = '<select name="search[]">'.$search_opt_html.'</select>';
+
+            $condition_opt = "";
+            foreach($condition_arr as $c) {
+                $active = ($c[0] == $_GET['s_condition'][$i-1]) ? "selected" : "";
+                $condition_opt .= '<option value="'.$c[0].'" '.$active.'>'.$c[1].'</option>';
+            }
+            $conditon_html = '<select name="s_condition[]">'.$condition_opt.'</select>';
+
+            $join_opt = "";
+            foreach($join_arr as $j) {
+                $active = ($j[0] == $_GET['s_join'][$i-1]) ? "selected" : "";
+                $join_opt .= '<option value="'.$j[0].'" '.$active.'>'.$j[1].'</option>';
+            }
+            $concat_html = '&nbsp;&nbsp;&nbsp;<select name="s_join[]">'.$join_opt.'</select>&nbsp;&nbsp;&nbsp;';
+
+            $value_fiedl_html = '<input name="s_val[]" class="input" value="'.$_GET['s_val'][$i-1].'" style="width:100px" />';
+
+            $search_html .= $search_field_html.$conditon_html.$value_fiedl_html;
+            if($i < $num)
+                $search_html .= $concat_html;
+        }
+
+        return $search_html;
+    }
+
+    public function gen_where($model_id) {
+        if(!$_GET['search'])
+            return ;
+
+        $map = [];
+        for($i=0; $i < count($_GET['search']); $i++) {
+            $conditon = str_replace('\\', "", $_GET['s_condition'][$i]);
+            $name = $_GET['search'][$i];
+            $value = urldecode($_GET['s_val'][$i]);
+
+            $fie_where = array(
+                'model_id' => $model_id,
+                'name' => $name
+            );
+
+            if($value === "")
+                continue;
+
+            $fields_find = D('Field')->relation(true)->where($fie_where)->select();
+            $field_find = $fields_find[0];
+            $type = $fields_find[0]['input']['type'];
+            $opt_value = $fields_find[0]['input']['opt_value'];
+
+            if($type == "relation_select") {
+                $rv = $field_find['relation_value'];
+                $rf = $field_find['relation_field'];
+                $rm = $field_find['relation_model'];
+
+                // 得到需要关联的模型
+                $rm = M('Model')->field('tbl_name')->getById($rm);
+                if (empty($rm)) {
+                    return '';
+                }
+                if(strpos($rm['tbl_name'],".")){
+                    $tblName = $rm['tbl_name'];
+                }else{
+                    // 得到不带前缀的表名
+                    $tblName = substr($rm['tbl_name'], strlen(C('DB_PREFIX')));
+                }
+
+                $conditon_model = "eq";
+                $this->gen_condition($conditon, $conditon_model, $value);
+                $where[$rv] = [$conditon_model, $value];
+
+                $list = [];
+                if(!is_numeric($value))
+                    $list = M($tblName)->where($where)->field($rf)->select();
+
+                if($list) {
+                    $r_val = [];
+                    foreach($list as $relation_val) {
+                        $r_val[] = $relation_val[$rf];
+                    }
+                    $map[$name] = ['in', $r_val];
+                } else {
+                    $map[$name] = [$conditon_model, $value];
+                }
+
+                continue;
+            } else if($type=='radio'|| $type=='select' || $type=='checkbox'){
+                $opt_value = str_replace("default","",$opt_value);
+                $a = explode(':', $opt_value);
+                foreach ($a as $k=>$v){
+                    if($k%2==0){
+                        continue;
+                    }else{
+                        if(strpos($v,$value)!==false){
+                            $in_ary .=trim($a[$k-1]).',';
+                        }
+                        $new_ary[$v] = trim($a[$k-1]);
+                    }
+                }
+                $in_ary = substr($in_ary, 0,-1);
+                if(substr($value,0,1)=='='){
+                    $value = str_replace('=', '', $value);
+                    $where[$name] = $new_ary[$value];
+                }else if($type=='checkbox'){
+                    $new_ary[$value] = trim($new_ary[$value]);
+                    $map[$name] = array('like','%'.$new_ary[$value].'%');
+                }else{
+                    $map[$name] = array('in',$in_ary);
+                }
+
+                continue;
+            } else if($type=='date_utime' || $type =='date_microtime'){
+                $t_list = explode("-", $value);
+                $num = count($t_list);
+                switch ($num){
+                    case 1:
+                        $stime = strtotime($t_list[0].'-01-01 00:00:00');
+                        $etime =  strtotime(($t_list[0]+1).'-01-01 00:00:00');
+                        break;
+                    case 2:
+                        $stime = strtotime($t_list[0].'-'.$t_list[1].'-01 00:00:00');
+                        $etime = $stime+(86400*30);
+                        break;
+                    case 3:
+                        $stime = strtotime($t_list[0].'-'.$t_list[1].'-'.$t_list[2].' 00:00:00');
+                        $etime = $stime+86400;
+                        break;
+                    case 4:
+                        $stime = strtotime($t_list[0].'-'.$t_list[1].'-'.$t_list[2].' '.$t_list[3].':00:00');
+                        $etime = $stime+3600;
+                        break;
+                    case 5:
+                        $stime = strtotime($t_list[0].'-'.$t_list[1].'-'.$t_list[2].' '.$t_list[3].':'.$t_list[4].':00');
+                        $etime = $stime+60;
+                        break;
+                }
+
+                if($type =='date_microtime'){
+                    $stime = $stime*1000;
+                    $etime = $etime*1000;
+                }
+
+                $map[$name]  = array('between',array($stime, $etime));
+
+                continue;
+            }
+
+            $conditon_model = "eq";
+            $this->gen_condition($conditon, $conditon_model, $value);
+            $map[$name] = [$conditon_model, $value];
+        }
+
+        return $map;
+    }
+
+    protected function gen_condition($conditon, &$conditon_model, &$value) {
+        switch($conditon) {
+            case "=":
+                $conditon_model = "eq";
+                break;
+
+            case "!=":
+                $conditon_model = "neq";
+                break;
+
+            case "!%":
+                $conditon_model = "exp";
+                $value = ' not like "%'.$value.'%"';
+                break;
+
+            case "%":
+                $conditon_model = "like";
+                $value = "%".$value."%";
+                break;
+
+            case "^%":
+                $conditon_model = "like";
+                $value = $value."%";
+                break;
+
+            case "$%":
+                $conditon_model = "like";
+                $value = "%".$value;
+                break;
+
+            case ">=":
+                $conditon_model = "egt";
+                break;
+
+            case ">":
+                $conditon_model = "gt";
+                break;
+
+            case "<=":
+                $conditon_model = "elt";
+                break;
+
+            case "<":
+                $conditon_model = "lt";
+                break;
+
+            case "notin":
+                $conditon_model = "not in";
+                break;
+
+            case "in":
+                $conditon_model = "in";
+                break;
+
+            case "between":
+                $conditon_model = "between";
+                break;
+
+            case "notbetween":
+                $conditon_model = "between";
+                break;
         }
     }
 }

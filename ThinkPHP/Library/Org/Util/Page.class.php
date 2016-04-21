@@ -85,13 +85,16 @@ class Page {
                 unset($_GET[C('VAR_URL_PARAMS')]);
                 if(empty($_GET)) {
                     $parameter  =   array();
-                }else{
-                    $parameter  =   $_GET;
                 }
             }
             $parameter[$p]  =   '__PAGE__';
             $url            =   U('',$parameter);
         }
+
+        if($_SERVER['QUERY_STRING']) {
+            $url .= '?'.$_SERVER['QUERY_STRING'];
+        }
+
         //上下翻页字符串
         $upRow          =   $this->nowPage-1;
         $downRow        =   $this->nowPage+1;

@@ -90,6 +90,12 @@
             </td>
         </tr>
         <tr>
+            <th width="120">搜索支持:</th>
+            <td>
+                <label><input type="radio" name="field[is_search]" value="0" <if condition="$field['is_search'] eq 0">checked="checked"</if> /> 否</label> &nbsp; <label><input type="radio" name="field[is_search]" value="1" <if condition="$field['is_search'] eq 1">checked="checked"</if> /> 是      </label> （列表中显示 的字段默认可搜索，如果字段不在列表显示，可通过这里支持搜索）
+            </td>
+        </tr>
+        <tr>
             <th width="100">自动过滤函数：</th>
             <td>
                 <select name="field[auto_filter]" id="auto_filter" width="180">
