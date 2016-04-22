@@ -510,27 +510,22 @@ class EmptyController extends CommonController {
                 continue;
             } else if($type=='radio'|| $type=='select' || $type=='checkbox'){
                 $opt_value = str_replace("default","",$opt_value);
-                $a = explode(':', $opt_value);
+                $opt_value = str_replace(["\r\n", "\r", "\n"], "\n", $opt_value);
+
+                $a = explode("\n", $opt_value);
+
                 foreach ($a as $k=>$v){
-                    if($k%2==0){
-                        continue;
-                    }else{
-                        if(strpos($v,$value)!==false){
-                            $in_ary .=trim($a[$k-1]).',';
-                        }
-                        $new_ary[$v] = trim($a[$k-1]);
+                    $v = trim($v, ':');
+                    $tmp = explode(":", $v);
+
+                    if($value == $tmp[0] || $value == $tmp[1] || strpos($tmp[1], $value) !== false) {
+                        $value = $tmp[0];
                     }
                 }
-                $in_ary = substr($in_ary, 0,-1);
-                if(substr($value,0,1)=='='){
-                    $value = str_replace('=', '', $value);
-                    $where[$name] = $new_ary[$value];
-                }else if($type=='checkbox'){
-                    $new_ary[$value] = trim($new_ary[$value]);
-                    $map[$name] = array('like','%'.$new_ary[$value].'%');
-                }else{
-                    $map[$name] = array('in',$in_ary);
-                }
+
+                $conditon_model = "eq";
+                $this->gen_condition($conditon, $conditon_model, $value);
+                $map[$name] = [$conditon_model, $value];
 
                 continue;
             } else if($type=='date_utime' || $type =='date_microtime'){
